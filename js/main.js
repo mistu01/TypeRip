@@ -16,16 +16,43 @@ Vue.component('font-panel', {
                 </div>'
   })
 
+function createEmptyFontFamily() {
+    return {
+        name: "",
+        designers: [],
+        fonts: [],
+        sampleText: "",
+        foundryName: "",
+        slug: "",
+        defaultLanguage: ""
+    };
+}
+
 var typeRipVue = new Vue({
     el: '#typeripvue',
     data: {
         urlInput: "",
         fontIsActive: false,
-        fontFamily: {},
+        fontFamily: createEmptyFontFamily(),
+        gridColumns: 3,
         rawDownload: false,
         message: {visible: true, title: "Typerip", text: "<p>The Adobe Font ripper.</p><br><p>Enter a font family URL from <a href='https://fonts.adobe.com/'>Adobe Fonts</a> to begin.</p><p>By using this tool, you agree to not violate copyright law or licenses established by the font owners, font foundries and/or Adobe. All fonts belong to their respective owners.</p>"}
     },
+    computed: {
+        chunkedFonts: function() {
+            const fonts = Array.isArray(this.fontFamily.fonts) ? this.fontFamily.fonts : [];
+            const chunkSize = Math.max(1, this.gridColumns);
+            const chunks = [];
+            for (let i = 0; i < fonts.length; i += chunkSize) {
+                chunks.push(fonts.slice(i, i + chunkSize));
+            }
+            return chunks;
+        }
+    },
     methods: {
+        resetFontFamily: function() {
+            this.fontFamily = createEmptyFontFamily();
+        },
         showMessage: function(title_, text_) {
             this.fontIsActive = false
             this.message = {
@@ -33,6 +60,7 @@ var typeRipVue = new Vue({
                 title: title_, 
                 text: text_
             };
+            this.resetFontFamily();
         },
         urlSubmitButtonPress: function() {
             this.showMessage("Loading...", "")
@@ -40,15 +68,19 @@ var typeRipVue = new Vue({
                 if(responseType_ == "error"){
                     this.showMessage("Error", response_)
                 }else{
-                    this.fontFamily.name = response_.name
-                    this.fontFamily.designers = response_.designers
-                    this.fontFamily.fonts = response_.fonts
-                    this.fontFamily.sampleText = response_.sampleText
+                    const designers = Array.isArray(response_.designers) ? response_.designers : [];
+                    const fonts = Array.isArray(response_.fonts) ? response_.fonts : [];
+
+                    this.fontFamily = Object.assign(createEmptyFontFamily(), response_, {
+                        designers: designers,
+                        fonts: fonts,
+                        sampleText: response_.sampleText || ""
+                    });
                     this.fontIsActive = true
 
-                    this.fontFamily.fonts.forEach(font => {
+                    fonts.forEach(font => {
                         var font_css = document.createElement('style');
-                        font_css.appendChild(document.createTextNode("@font-face { font-family: '" + font.name + "'; \src: url(" + font.url + ");}"));
+                        font_css.appendChild(document.createTextNode("@font-face { font-family: '" + font.name + "'; src: url(" + font.url + ");}"));
                         document.head.appendChild(font_css);
                     });
                 }
@@ -56,20 +88,6 @@ var typeRipVue = new Vue({
         },
         downloadFonts: function(font_, zipFileName_) {
             TypeRip.downloadFonts(font_, zipFileName_, this.rawDownload);
-        },
-        getFontsInChunks: function(chunkSize_) {
-            output = []
-            if(this.fontFamily.fonts != null) {
-                for(var i = 0; i < this.fontFamily.fonts.length; i++) {
-                    if(i % chunkSize_ == 0 ){
-                        output.push([]);
-                    }
-                    output[Math.floor(i / chunkSize_)].push(this.fontFamily.fonts[i])
-                }
-                return output
-            }else{
-                return []
-            }
         }
     }
 });

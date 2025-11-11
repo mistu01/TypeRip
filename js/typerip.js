@@ -154,34 +154,56 @@ var TypeRip = {
         })
     },
     downloadFonts: function(fonts_, zipFileName_, rawDownload_){
-        fontList = []
-        if(Array.isArray(fonts_)){ //more than one font
-            fontList = fonts_;
-        }else{ //only one font
-            fontList = [fonts_];
-            zipFileName_ = fonts_.name + " " + fonts_.style
+        if(Array.isArray(fonts_)) {
+            if(fonts_.length === 0){ return; }
+            this.downloadFontsAsZip(fonts_, zipFileName_, rawDownload_);
+        }else if(fonts_){
+            this.downloadSingleFont(fonts_, rawDownload_);
         }
+    },
+    downloadSingleFont: function(font_, rawDownload_) {
+        const targetFont = font_;
+        if(!targetFont){ return; }
+        this.getAndRepairFont(targetFont, rawDownload_, (fontBuffer, fontMeta) => {
+            const fileName = this.getFontFileName(fontMeta);
+            const blob = new Blob([fontBuffer], {type: "font/ttf"});
+            saveAs(blob, fileName);
+        });
+    },
+    downloadFontsAsZip: function(fontList_, zipFileName_, rawDownload_) {
+        const fontList = Array.isArray(fontList_) ? fontList_ : [];
+        if(fontList.length === 0){ return; }
 
-        //create a ZIP file
-        zip = new JSZip();
+        const zip = new JSZip();
+        const zipName = (zipFileName_ || "TypeRip Fonts") + ".zip";
+        let fontProcessCounter = 0;
 
-        fontProcessCounter = 0;
-
-        //go through each instance of fond information in fontList, download them from the adobe server, reconstruct them with OpenType and zip them.
-        //Once n fonts have been zipped, download the zip file, where n is the number of fonts in fontList.
-        //There's probably a better way to do this with promises or something.
-        for(var i = 0; i < fontList.length; i++) {
-            var fontData = this.getAndRepairFont(fontList[i], rawDownload_, (font, fontMeta) =>{
-                zip.file(fontMeta.name + ".ttf", font);
+        fontList.forEach(fontData => {
+            this.getAndRepairFont(fontData, rawDownload_, (fontBuffer, fontMeta) => {
+                zip.file(this.getFontFileName(fontMeta), fontBuffer);
                 fontProcessCounter++;
-                if(fontProcessCounter == fontList.length){
+                if(fontProcessCounter === fontList.length){
                     zip.generateAsync({type:"blob"})
                     .then(function(content) {
-                        saveAs(content, zipFileName_ + ".zip");
+                        saveAs(content, zipName);
                     });
                 }
             });
+        });
+    },
+    getFontFileName: function(fontMeta){
+        if(!fontMeta){ return "font.ttf"; }
+        const parts = [];
+        if(fontMeta.name){
+            parts.push(fontMeta.name);
+        }else if(fontMeta.familyName){
+            parts.push(fontMeta.familyName);
         }
+        if(fontMeta.style){
+            parts.push(fontMeta.style);
+        }
+        const base = parts.join(" ").trim() || "font";
+        return base + ".ttf";
     },
 
     getAndRepairFont: function(font_, rawDownload_, callback_) {
