@@ -1,11 +1,11 @@
-<!doctype <!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en" data-theme="light">
 <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>TypeRip</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600&display=swap" rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,500,600,700&display=swap" rel="stylesheet"> 
     <link href="https://fonts.googleapis.com/css?family=Source+Code+Pro&display=swap" rel="stylesheet">
     <link href="https://unpkg.com/ionicons@4.5.10-0/dist/css/ionicons.min.css" rel="stylesheet">
     <link rel="stylesheet" type="text/css" media="screen" href="css/main.css" />
@@ -19,11 +19,19 @@
     <link rel="icon" type="image/png" href="res/favicon.png">
 </head>
 <body>
+    <div class="background-accents" aria-hidden="true">
+        <span class="orb orb-one"></span>
+        <span class="orb orb-two"></span>
+    </div>
     <div id="typeripvue">
+        <div class="app-shell">
         <header>
             <div id="icon">Tr</div>
             <input v-model="urlInput" v-on:keyup.enter="urlSubmitButtonPress" id="url_input" type="text" placeholder="Adobe Fonts font family URL" />
             <div id="url_submit_button" v-on:click="urlSubmitButtonPress"><i class="icon ion-md-search"></i></div>
+            <div id="theme-switcher" class="button_container">
+                <a class="button"><i class="icon ion-md-bulb"></i></a>
+            </div>
         </header>
         <article>
             <div class="grid">
@@ -37,7 +45,10 @@
                                 </div>
                             </template>
                             <template v-if="fontIsActive">
-                                <div class="info_container">
+                                <div class.pre-wrap {
+white-space: pre-wrap;
+}
+="info_container">
                                     <h3>{{fontFamily.name}}</h3>
                                     <p class="subtext" v-if="fontFamily.designers.length > 0">
                                         by 
@@ -60,8 +71,29 @@
                 </div>
             </div>
         </article>
+        </div>
     </div>
 
     <script src="js/main.js"></script>
+    <script>
+        const themeSwitcher = document.getElementById('theme-switcher');
+        const doc = document.firstElementChild;
+
+        themeSwitcher.addEventListener('click', () => {
+            const currentTheme = doc.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            doc.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+        });
+
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+        if (savedTheme) {
+            doc.setAttribute('data-theme', savedTheme);
+        } else if (prefersDark) {
+            doc.setAttribute('data-theme', 'dark');
+        }
+    </script>
 </body>
 </html>
