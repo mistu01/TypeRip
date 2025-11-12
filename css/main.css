@@ -219,6 +219,33 @@ header #url_submit_button:hover {
     box-shadow: 0 25px 35px rgba(36, 99, 235, 0.45);
 }
 
+header .button_container {
+    padding: 0;
+}
+
+header .button_container .button {
+    width: 6.5rem;
+    height: 6.5rem;
+    border-radius: 1.2rem;
+    background: linear-gradient(120deg, var(--accent-two), var(--accent-one));
+    color: var(--primary-color-contrast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 20px 30px rgba(36, 99, 235, 0.35);
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+header .button_container .button i {
+    font-size: 2.4rem;
+}
+
+header .button_container .button:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 25px 35px rgba(36, 99, 235, 0.45);
+}
+
 header #url_input {
     line-height: 6rem;
     padding: 0 2rem;
@@ -310,12 +337,23 @@ header #url_input::placeholder {
     flex-grow: 1;
     padding:1rem;
 }
+.info_container--active {
+    padding-top: 0;
+}
 .info_container p {
     font-weight: 500;
 }
 .info_container .small {
     font-size: 1.4rem;
     color: var(--subtle-text-color);
+}
+.font-thumb {
+    display: inline-block;
+    margin: 0.5rem 0 1.5rem;
+    font-size: clamp(2.4rem, 4vw, 3.8rem);
+    line-height: 1.2;
+    color: var(--text-color);
+    word-break: break-word;
 }
 .button_container {
     padding:1rem;
@@ -358,29 +396,6 @@ footer p, footer a, footer a:active{
 #theme-switcher {
     margin-left: auto;
     padding: 0;
-}
-
-#theme-switcher .button {
-    width: 5.2rem;
-    height: 5.2rem;
-    padding: 0;
-    background: rgba(255,255,255,0.6);
-    border: 1px solid rgba(255,255,255,0.3);
-    color: var(--text-color);
-    border-radius: 1.2rem;
-    box-shadow: 0 12px 24px rgba(0,0,0,0.1);
-    transition: background 0.2s ease, transform 0.2s ease;
-}
-
-[data-theme="dark"] #theme-switcher .button {
-    background: rgba(24,25,36,0.9);
-    border-color: rgba(255,255,255,0.08);
-}
-
-#theme-switcher .button:hover {
-    background: linear-gradient(135deg, var(--accent-one), var(--accent-two));
-    color: #fff;
-    transform: translateY(-2px);
 }
 
 @keyframes shiftGradient {

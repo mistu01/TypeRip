@@ -1,7 +1,12 @@
 var TypeRip = {
     handleRequest: function(url_, callback_){
+        if(typeof url_ === "string"){
+            url_ = url_.trim();
+        }
         if(!url_.toLowerCase().startsWith("http://") && !url_.toLowerCase().startsWith("https://")){
-            url_ = "http://" + url_;
+            url_ = "https://" + url_;
+        } else if (url_.toLowerCase().startsWith("http://")) {
+            url_ = "https://" + url_.substr(7);
         }
         if(url_.indexOf("fonts.adobe.com/collections") != -1){
             this.getFontCollection(url_, callback_);
@@ -9,9 +14,115 @@ var TypeRip = {
             this.getFontFamily(url_, callback_);
         }
     },
+    buildProxySources: function(targetUrl_){
+        if(typeof targetUrl_ !== "string"){
+            return [];
+        }
+        const trimmedUrl = targetUrl_.trim();
+        if(trimmedUrl === ""){
+            return [];
+        }
+        const encodedUrl = encodeURIComponent(trimmedUrl);
+        const corsProxyUrl = "https://corsproxy.io/?" + encodeURI(trimmedUrl);
+        const codeTabsUrl = "https://api.codetabs.com/v1/proxy/?quest=" + trimmedUrl;
+        const allOriginsUrl = "https://api.allorigins.win/raw?url=" + encodedUrl;
+        const defaultSources = [
+            {url: corsProxyUrl, label: "corsproxy.io", timeout: 10000},
+            {url: codeTabsUrl, label: "api.codetabs.com", timeout: 12000},
+            {url: allOriginsUrl, label: "allorigins", timeout: 12000}
+        ];
+        const customSources = this.getCustomProxySources(trimmedUrl, encodedUrl);
+        const combined = defaultSources.concat(customSources);
+        const seen = new Set();
+        return combined.filter(function(source){
+            if(!source || typeof source.url !== "string"){
+                return false;
+            }
+            const finalUrl = source.url.trim();
+            if(finalUrl === "" || seen.has(finalUrl)){
+                return false;
+            }
+            seen.add(finalUrl);
+            return true;
+        });
+    },
+    getCustomProxySources: function(rawUrl_, encodedUrl_){
+        if(typeof window === "undefined" || !Array.isArray(window.TypeRipProxySources)){
+            return [];
+        }
+        return window.TypeRipProxySources.map(function(entry){
+            if(typeof entry === "string"){
+                return {
+                    url: entry.replace("{url}", rawUrl_).replace("{encodedUrl}", encodedUrl_),
+                    label: "custom"
+                };
+            }else if(entry && typeof entry.url === "string"){
+                return {
+                    url: entry.url.replace("{url}", rawUrl_).replace("{encodedUrl}", encodedUrl_),
+                    label: entry.label || "custom",
+                    timeout: entry.timeout
+                };
+            }
+            return null;
+        }).filter(function(entry){
+            return entry && typeof entry.url === "string" && entry.url.trim() !== "";
+        });
+    },
+    fetchWithProxyFallback: function(targetUrl_){
+        const proxySources = this.buildProxySources(targetUrl_);
+        if(proxySources.length === 0){
+            return Promise.reject(new Error("Please provide a valid Adobe Fonts URL."));
+        }
+        return new Promise((resolve, reject) => {
+            let completedRequests = 0;
+            let resolved = false;
+            const errors = [];
+            proxySources.forEach(source => {
+                const timeoutValue = typeof source.timeout === "number" ? source.timeout : 12000;
+                axios.get(source.url, {timeout: timeoutValue, responseType: "text"})
+                .then(response => {
+                    if(resolved){
+                        return;
+                    }
+                    resolved = true;
+                    resolve(response);
+                })
+                .catch(error => {
+                    errors.push({source: source, error: error});
+                    completedRequests++;
+                    if(completedRequests === proxySources.length && !resolved){
+                        reject(new Error(this.describeProxyFailures(errors)));
+                    }
+                });
+            });
+        });
+    },
+    describeProxyFailures: function(errorEntries_){
+        if(!Array.isArray(errorEntries_) || errorEntries_.length === 0){
+            return "All proxy requests failed.";
+        }
+        const details = errorEntries_.map(entry => {
+            const label = entry && entry.source && entry.source.label ? entry.source.label : "proxy";
+            return label + ": " + this.extractErrorMessage(entry.error);
+        }).join("; ");
+        return "All proxy requests failed (" + details + ")";
+    },
+    extractErrorMessage: function(error_){
+        if(!error_){
+            return "Unknown error";
+        }
+        if(error_.response){
+            return "HTTP " + error_.response.status;
+        }
+        if(error_.code === "ECONNABORTED"){
+            const timeoutValue = error_.config && error_.config.timeout ? error_.config.timeout + "ms" : "timeout";
+            return "Request timed out (" + timeoutValue + ")";
+        }
+        return error_.message || "Network error";
+    },
 
     getFontCollection: function(url_, callback_){
-        axios.get("https://api.allorigins.win/raw?url=" + url_)
+        this.fetchWithProxyFallback(url_)
         .then(function (response) {
             let fontCollection = {
                 name: "",
@@ -62,24 +173,27 @@ var TypeRip = {
             
             //populate subfonts
             for (let i = 0; i < json.fontpack.font_variations.length; i++) {
+                const cssFontFamily = ["typerip", json.fontpack.font_variations[i].opaque_id, json.fontpack.font_variations[i].fvd || i].filter(Boolean).join("-");
                 fontCollection.fonts.push({
                     url: "https://use.typekit.net/pf/tk/" + json.fontpack.font_variations[i].opaque_id + "/" + json.fontpack.font_variations[i].fvd + "/a?unicode=AAAAAQAAAAEAAAAB&features=ALL&v=3&ec_token=3bb2a6e53c9684ffdc9a9bf71d5b2a620e68abb153386c46ebe547292f11a96176a59ec4f0c7aacfef2663c08018dc100eedf850c284fb72392ba910777487b32ba21c08cc8c33d00bda49e7e2cc90baff01835518dde43e2e8d5ebf7b76545fc2687ab10bc2b0911a141f3cf7f04f3cac438a135f", 
                     name: json.fontpack.font_variations[i].full_display_name,
                     style: json.fontpack.font_variations[i].variation_name, 
                     familyName: json.fontpack.font_variations[i].family.name,
-                    familyUrl: "https://fonts.adobe.com/fonts/" + json.fontpack.font_variations[i].family.slug
+                    familyUrl: "https://fonts.adobe.com/fonts/" + json.fontpack.font_variations[i].family.slug,
+                    cssFontFamily: cssFontFamily
                 });
             }	
 
             callback_("success", fontCollection)
         })
         .catch(function (error) {
-            callback_("error", error.message)
+            const message = (error && error.message) ? error.message : "Unexpected response from server.";
+            callback_("error", message)
         })
     },
 
     getFontFamily: function(url_, callback_) {
-        axios.get("https://api.allorigins.win/raw?url=" + url_)
+        this.fetchWithProxyFallback(url_)
         .then(function (response) {
             let fontFamily = {
                 name: "",
@@ -138,19 +252,22 @@ var TypeRip = {
 
             //populate subfonts
             for (let i = 0; i < json.family.fonts.length; i++) {
+                const cssFontFamily = ["typerip", json.family.slug, json.family.fonts[i].font.web.fvd || i].filter(Boolean).join("-");
                 fontFamily.fonts.push({
                     //the magic is in the "unicode=AAAAAQAAAAEAAAAB&features=ALL&v=3"m which (apparently) requests the entire font set from the server :)
                     url: "https://use.typekit.net/pf/tk/" + json.family.fonts[i].family.web_id + "/" + json.family.fonts[i].font.web.fvd + "/a?unicode=AAAAAQAAAAEAAAAB&features=ALL&v=3&ec_token=3bb2a6e53c9684ffdc9a9bf71d5b2a620e68abb153386c46ebe547292f11a96176a59ec4f0c7aacfef2663c08018dc100eedf850c284fb72392ba910777487b32ba21c08cc8c33d00bda49e7e2cc90baff01835518dde43e2e8d5ebf7b76545fc2687ab10bc2b0911a141f3cf7f04f3cac438a135f", 
                     name: json.family.fonts[i].name,
                     style: json.family.fonts[i].variation_name, 
                     familyName: json.family.fonts[i].preferred_family_name,
-                    familyUrl: "https://fonts.adobe.com/fonts/" + json.family.slug
+                    familyUrl: "https://fonts.adobe.com/fonts/" + json.family.slug,
+                    cssFontFamily: cssFontFamily
                 });
             }	
             callback_("success", fontFamily)
         })
         .catch(function (error) {
-            callback_("error", error.message)
+            const message = (error && error.message) ? error.message : "Unexpected response from server.";
+            callback_("error", message)
         })
     },
     downloadFonts: function(fonts_, zipFileName_, rawDownload_){

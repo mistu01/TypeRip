@@ -1,8 +1,8 @@
 Vue.component('font-panel', {
-    props: ['fontname', 'fontstyle', 'fonturl', 'sampletext', 'familyurl'],
+    props: ['fontname', 'fontstyle', 'fonturl', 'sampletext', 'familyurl', 'fontcssname'],
     template: ' <div class="column four">\
                     <div class="item">\
-                        <div class="upper"><p :style="{fontFamily : fontname}">{{sampletext}}</p></div>\
+                        <div class="upper"><p :style="{fontFamily : fontcssname || fontname}">{{sampletext}}</p></div>\
                         <div class="lower">\
                             <div class="info_container">\
                                 <a :href="familyurl"><p>{{fontname}}</p></a>\
@@ -47,6 +47,10 @@ var typeRipVue = new Vue({
                 chunks.push(fonts.slice(i, i + chunkSize));
             }
             return chunks;
+        },
+        primaryFont: function() {
+            const fonts = Array.isArray(this.fontFamily.fonts) ? this.fontFamily.fonts : [];
+            return fonts.length > 0 ? fonts[0] : null;
         }
     },
     methods: {
@@ -78,9 +82,13 @@ var typeRipVue = new Vue({
                     });
                     this.fontIsActive = true
 
+                    this.removeInjectedFontFaces();
+
                     fonts.forEach(font => {
+                        const fontFaceName = font.cssFontFamily || font.name;
                         var font_css = document.createElement('style');
-                        font_css.appendChild(document.createTextNode("@font-face { font-family: '" + font.name + "'; src: url(" + font.url + ");}"));
+                        font_css.setAttribute('data-typerip-fontface', fontFaceName);
+                        font_css.appendChild(document.createTextNode("@font-face { font-family: '" + fontFaceName + "'; src: url(" + font.url + ");}"));
                         document.head.appendChild(font_css);
                     });
                 }
@@ -88,6 +96,35 @@ var typeRipVue = new Vue({
         },
         downloadFonts: function(font_, zipFileName_) {
             TypeRip.downloadFonts(font_, zipFileName_, this.rawDownload);
+        },
+        removeInjectedFontFaces: function() {
+            const nodes = document.querySelectorAll("style[data-typerip-fontface]");
+            nodes.forEach(node => node.parentNode && node.parentNode.removeChild(node));
+        },
+        clearSiteData: function() {
+            this.removeInjectedFontFaces();
+            try {
+                localStorage.clear();
+            } catch (e) {}
+            try {
+                sessionStorage.clear();
+            } catch (e) {}
+            try {
+                if (document.cookie && document.cookie !== "") {
+                    document.cookie.split(";").forEach(cookie => {
+                        const eqPos = cookie.indexOf("=");
+                        const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+                        document.cookie = name.trim() + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
+                    });
+                }
+            } catch (e) {}
+            this.urlInput = "";
+            this.rawDownload = false;
+            const doc = document.firstElementChild;
+            if (doc) {
+                doc.setAttribute('data-theme', 'light');
+            }
+            this.showMessage("Site data cleared", "<p>All locally stored information has been removed.</p>");
         }
     }
 });
