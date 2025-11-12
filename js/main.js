@@ -1,17 +1,12 @@
 Vue.component('font-panel', {
-    props: ['fontname', 'fontstyle', 'fonturl', 'sampletext', 'familyurl', 'fontcssname'],
-    template: ' <div class="column four">\
-                    <div class="item">\
-                        <div class="upper"><p :style="{fontFamily : fontcssname || fontname}">{{sampletext}}</p></div>\
-                        <div class="lower">\
-                            <div class="info_container">\
-                                <a :href="familyurl"><p>{{fontname}}</p></a>\
-                                <p class="small">{{fontstyle}}</p>\
-                            </div>\
-                            <div class="button_container">\
-                                <a class="button" v-on:click="$emit(\'clickdownload\')"><i class="icon ion-md-arrow-down"></i></a>\
-                            </div>\
-                        </div>\
+    props: ['fontname', 'fontstyle', 'familyurl'],
+    template: ' <div class="font-row">\
+                    <div class="font-row__info">\
+                        <a :href="familyurl" class="font-row__name">{{fontname}}</a>\
+                        <p class="font-row__style">{{fontstyle}}</p>\
+                    </div>\
+                    <div class="font-row__actions button_container">\
+                        <a class="button button--download" v-on:click="$emit(\'clickdownload\')"><i class="icon ion-md-arrow-down"></i><span>Download</span></a>\
                     </div>\
                 </div>'
   })
@@ -34,24 +29,8 @@ var typeRipVue = new Vue({
         urlInput: "",
         fontIsActive: false,
         fontFamily: createEmptyFontFamily(),
-        gridColumns: 3,
         rawDownload: false,
         message: {visible: true, title: "Typerip", text: "<p>The Adobe Font ripper.</p><br><p>Enter a font family URL from <a href='https://fonts.adobe.com/'>Adobe Fonts</a> to begin.</p><p>By using this tool, you agree to not violate copyright law or licenses established by the font owners, font foundries and/or Adobe. All fonts belong to their respective owners.</p>"}
-    },
-    computed: {
-        chunkedFonts: function() {
-            const fonts = Array.isArray(this.fontFamily.fonts) ? this.fontFamily.fonts : [];
-            const chunkSize = Math.max(1, this.gridColumns);
-            const chunks = [];
-            for (let i = 0; i < fonts.length; i += chunkSize) {
-                chunks.push(fonts.slice(i, i + chunkSize));
-            }
-            return chunks;
-        },
-        primaryFont: function() {
-            const fonts = Array.isArray(this.fontFamily.fonts) ? this.fontFamily.fonts : [];
-            return fonts.length > 0 ? fonts[0] : null;
-        }
     },
     methods: {
         resetFontFamily: function() {
