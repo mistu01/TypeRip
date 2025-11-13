@@ -28,12 +28,21 @@
         <header>
             <div id="icon">Tr</div>
             <input v-model="urlInput" v-on:keyup.enter="urlSubmitButtonPress" id="url_input" type="text" placeholder="Adobe Fonts font family URL" />
-            <div id="url_submit_button" v-on:click="urlSubmitButtonPress"><i class="icon ion-md-search"></i></div>
+            <button id="url_submit_button" type="button" v-on:click="urlSubmitButtonPress" aria-label="Fetch font family">
+                <i class="icon ion-md-search"></i>
+                <span class="button-label">Fetch</span>
+            </button>
             <div id="theme-switcher" class="button_container">
-                <a class="button"><i class="icon ion-md-bulb"></i></a>
+                <a class="button" aria-label="Toggle theme">
+                    <i class="icon ion-md-bulb"></i>
+                    <span class="button-label">Theme</span>
+                </a>
             </div>
             <div id="clear-data" class="button_container">
-                <a class="button" v-on:click="clearSiteData" title="Clear site data"><i class="icon ion-md-trash"></i></a>
+                <a class="button" v-on:click="clearSiteData" title="Clear site data" aria-label="Clear site data">
+                    <i class="icon ion-md-trash"></i>
+                    <span class="button-label">Clear</span>
+                </a>
             </div>
         </header>
         <article>

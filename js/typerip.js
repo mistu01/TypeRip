@@ -1,18 +1,33 @@
 var TypeRip = {
+    invalidAdobeUrlMessage: "Please enter a valid Adobe Fonts URL (https://fonts.adobe.com/...).",
     handleRequest: function(url_, callback_){
         if(typeof url_ === "string"){
             url_ = url_.trim();
+        }
+        if(!url_){
+            callback_("error", this.invalidAdobeUrlMessage);
+            return;
         }
         if(!url_.toLowerCase().startsWith("http://") && !url_.toLowerCase().startsWith("https://")){
             url_ = "https://" + url_;
         } else if (url_.toLowerCase().startsWith("http://")) {
             url_ = "https://" + url_.substr(7);
         }
+        if(!this.isAdobeFontsUrl(url_)){
+            callback_("error", this.invalidAdobeUrlMessage);
+            return;
+        }
         if(url_.indexOf("fonts.adobe.com/collections") != -1){
             this.getFontCollection(url_, callback_);
         }else{
             this.getFontFamily(url_, callback_);
         }
+    },
+    isAdobeFontsUrl: function(url_){
+        if(typeof url_ !== "string"){
+            return false;
+        }
+        return url_.toLowerCase().startsWith("https://fonts.adobe.com/");
     },
     buildProxySources: function(targetUrl_){
         if(typeof targetUrl_ !== "string"){

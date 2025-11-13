@@ -1,13 +1,13 @@
 .grid {
 	width:100%;
-	padding: 0 32px;
+	padding: 0 2.4rem;
 	max-width:1024px;
 	margin: 0 auto;
 	box-sizing: border-box;
 }
 .row {
 	display: flex;
-	flex-flow: row;
+	flex-flow: row wrap;
 }
 .row:after, .grid:after{
 	clear:both;
@@ -60,6 +60,9 @@
     .column.offset-eleven{margin-left:93.5%;}
 } 
 @media (max-width: 640px){
+	.grid {
+		padding: 0 1.2rem;
+	}
 	.row:not(.non-responsive) > .column{ 
 		width:100% !important;
 		margin-right:0;
