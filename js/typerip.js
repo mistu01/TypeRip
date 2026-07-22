@@ -354,8 +354,37 @@ var TypeRip = {
 
     getAndRepairFont: function(font_, rawDownload_, callback_) {
         if(rawDownload_){
-            axios.get(font_.url, {responseType: 'arraybuffer'}).then(function (response) {
-                callback_(response.data, font_);
+            axios.get(font_.url, {responseType: 'arraybuffer'}).then((response) => {
+                // For raw downloads with CFF2 fonts, we can't modify the name table easily
+                // But we can try to parse and rebuild using opentype.parseBuffer
+                try {
+                    const fontData = opentype.parseBuffer(response.data);
+                    
+                    // Check if this is a CFF/CFF2 font that we successfully parsed
+                    if(fontData && fontData.names && fontData.names.version) {
+                        // Modify version
+                        for (let langKey in fontData.names.version) {
+                            if (typeof fontData.names.version[langKey] === 'string') {
+                                fontData.names.version[langKey] = fontData.names.version[langKey] + " Mistu";
+                            }
+                        }
+                        
+                        // Try to serialize back - this may fail for CFF2
+                        try {
+                            const modifiedBuffer = fontData.toArrayBuffer();
+                            callback_(modifiedBuffer, font_);
+                            return;
+                        } catch(e) {
+                            console.warn("Could not serialize modified font, returning original:", e.message);
+                        }
+                    }
+                    
+                    // If we couldn't modify it, return the original
+                    callback_(response.data, font_);
+                } catch(parseError) {
+                    console.warn("Could not parse font buffer for name modification:", parseError.message);
+                    callback_(response.data, font_);
+                }
             }).catch(function(error) {
                 console.error("Error downloading font:", error);
                 callback_(null, font_);
@@ -368,6 +397,7 @@ var TypeRip = {
                     // If opentype.js fails (e.g., CFF2/variable fonts), fall back to raw download
                     if (error_.message && error_.message.includes("outlines")) {
                         console.log("Falling back to raw download for:", font_.name || font_.familyName);
+                        console.warn("Note: Version tagging ('Mistu') cannot be applied to variable fonts (CFF2) due to library limitations.");
                         axios.get(font_.url, {responseType: 'arraybuffer'}).then(function (response) {
                             callback_(response.data, font_);
                         }).catch(function(axError) {
