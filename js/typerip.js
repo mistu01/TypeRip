@@ -297,6 +297,10 @@ var TypeRip = {
         const targetFont = font_;
         if(!targetFont){ return; }
         this.getAndRepairFont(targetFont, rawDownload_, (fontBuffer, fontMeta) => {
+            if (!fontBuffer) {
+                console.error("Failed to process font");
+                return;
+            }
             const fileName = this.getFontFileName(fontMeta);
             const blob = new Blob([fontBuffer], {type: "font/ttf"});
             saveAs(blob, fileName);
@@ -312,7 +316,9 @@ var TypeRip = {
 
         fontList.forEach(fontData => {
             this.getAndRepairFont(fontData, rawDownload_, (fontBuffer, fontMeta) => {
-                zip.file(this.getFontFileName(fontMeta), fontBuffer);
+                if (fontBuffer) {
+                    zip.file(this.getFontFileName(fontMeta), fontBuffer);
+                }
                 fontProcessCounter++;
                 if(fontProcessCounter === fontList.length){
                     zip.generateAsync({type:"blob"})
@@ -347,7 +353,9 @@ var TypeRip = {
         }else{
             opentype.load(font_.url, function(error_, fontData_) {
                 if (error_) {
-                    return "Error: Font failed to load."
+                    console.error("Error loading font:", error_);
+                    callback_(null, font_);
+                    return;
                 }else{
 
                     //Rebuild the glyph data structure. This repairs any encoding issues.
@@ -410,11 +418,22 @@ var TypeRip = {
                     if(fontData_.names) {
                         newFontData.names = {};
                         for(let nameKey in fontData_.names) {
-                            newFontData.names[nameKey] = fontData_.names[nameKey];
+                            if (typeof fontData_.names[nameKey] === 'object' && fontData_.names[nameKey] !== null) {
+                                newFontData.names[nameKey] = {};
+                                for (let langKey in fontData_.names[nameKey]) {
+                                    newFontData.names[nameKey][langKey] = fontData_.names[nameKey][langKey];
+                                }
+                            } else {
+                                newFontData.names[nameKey] = fontData_.names[nameKey];
+                            }
                         }
                         // Append "Mistu" to the version string
-                        if(newFontData.names.version && newFontData.names.version.en) {
-                            newFontData.names.version.en = newFontData.names.version.en + " Mistu";
+                        if(newFontData.names.version) {
+                            for (let langKey in newFontData.names.version) {
+                                if (typeof newFontData.names.version[langKey] === 'string') {
+                                    newFontData.names.version[langKey] = newFontData.names.version[langKey] + " Mistu";
+                                }
+                            }
                         }
                     }
 
