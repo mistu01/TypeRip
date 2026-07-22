@@ -422,32 +422,19 @@ var TypeRip = {
                         }
                     }
 
-                    // Copy and modify the name table entries (including version)
-                    if(fontData_.names) {
-                        newFontData.names = {};
-                        for(let nameKey in fontData_.names) {
-                            if (typeof fontData_.names[nameKey] === 'object' && fontData_.names[nameKey] !== null) {
-                                newFontData.names[nameKey] = {};
-                                for (let langKey in fontData_.names[nameKey]) {
-                                    newFontData.names[nameKey][langKey] = fontData_.names[nameKey][langKey];
-                                }
-                            } else {
-                                newFontData.names[nameKey] = fontData_.names[nameKey];
-                            }
-                        }
-                        // Append "Mistu" to the version string
-                        if(newFontData.names.version) {
-                            for (let langKey in newFontData.names.version) {
-                                if (typeof newFontData.names.version[langKey] === 'string') {
-                                    newFontData.names.version[langKey] = newFontData.names.version[langKey] + " Mistu";
-                                }
-                            }
-                        }
-                    }
-
                     //rebuild and download the font.
                     try {
                         let newFont = new opentype.Font(newFontData)
+                        
+                        // Modify the version AFTER font creation (opentype.js ignores names in constructor)
+                        if(newFont.names && newFont.names.version) {
+                            for (let langKey in newFont.names.version) {
+                                if (typeof newFont.names.version[langKey] === 'string') {
+                                    newFont.names.version[langKey] = newFont.names.version[langKey] + " Mistu";
+                                }
+                            }
+                        }
+                        
                         callback_(newFont.toArrayBuffer(), font_);
                     } catch(e) {
                         console.error("Error creating font:", e);
