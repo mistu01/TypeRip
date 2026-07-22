@@ -365,6 +365,17 @@ var TypeRip = {
             opentype.load(font_.url, function(error_, fontData_) {
                 if (error_) {
                     console.error("Error loading font:", error_);
+                    // If opentype.js fails (e.g., CFF2/variable fonts), fall back to raw download
+                    if (error_.message && error_.message.includes("outlines")) {
+                        console.log("Falling back to raw download for:", font_.name || font_.familyName);
+                        axios.get(font_.url, {responseType: 'arraybuffer'}).then(function (response) {
+                            callback_(response.data, font_);
+                        }).catch(function(axError) {
+                            console.error("Raw download also failed:", axError);
+                            callback_(null, font_);
+                        });
+                        return;
+                    }
                     callback_(null, font_);
                     return;
                 }else{
