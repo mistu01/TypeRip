@@ -361,21 +361,42 @@ var TypeRip = {
                     const fontData = opentype.parseBuffer(response.data);
                     
                     // Check if this is a CFF/CFF2 font that we successfully parsed
-                    if(fontData && fontData.names && fontData.names.version) {
+                    if(fontData && fontData.names) {
+                        let modified = false;
+                        
                         // Modify version
-                        for (let langKey in fontData.names.version) {
-                            if (typeof fontData.names.version[langKey] === 'string') {
-                                fontData.names.version[langKey] = fontData.names.version[langKey] + " Mistu";
+                        if(fontData.names.version) {
+                            for (let langKey in fontData.names.version) {
+                                if (typeof fontData.names.version[langKey] === 'string') {
+                                    fontData.names.version[langKey] = fontData.names.version[langKey] + " Mistu";
+                                    modified = true;
+                                }
                             }
                         }
                         
+                        // Modify font name
+                        if(fontData.names.fontFamily || fontData.names.fullName) {
+                            ['fontFamily', 'fullName', 'preferredFamily', 'typographicFamily'].forEach(nameType => {
+                                if(fontData.names[nameType]) {
+                                    for (let langKey in fontData.names[nameType]) {
+                                        if (typeof fontData.names[nameType][langKey] === 'string' && !fontData.names[nameType][langKey].includes(' Mistu')) {
+                                            fontData.names[nameType][langKey] = fontData.names[nameType][langKey] + " Mistu";
+                                            modified = true;
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                        
                         // Try to serialize back - this may fail for CFF2
-                        try {
-                            const modifiedBuffer = fontData.toArrayBuffer();
-                            callback_(modifiedBuffer, font_);
-                            return;
-                        } catch(e) {
-                            console.warn("Could not serialize modified font, returning original:", e.message);
+                        if(modified) {
+                            try {
+                                const modifiedBuffer = fontData.toArrayBuffer();
+                                callback_(modifiedBuffer, font_);
+                                return;
+                            } catch(e) {
+                                console.warn("Could not serialize modified font, returning original:", e.message);
+                            }
                         }
                     }
                     
@@ -496,6 +517,19 @@ var TypeRip = {
                                     newFont.names.version[langKey] = newFont.names.version[langKey] + " Mistu";
                                 }
                             }
+                        }
+                        
+                        // Modify font name fields
+                        if(newFont.names) {
+                            ['fontFamily', 'fullName', 'preferredFamily', 'typographicFamily'].forEach(nameType => {
+                                if(newFont.names[nameType]) {
+                                    for (let langKey in newFont.names[nameType]) {
+                                        if (typeof newFont.names[nameType][langKey] === 'string' && !newFont.names[nameType][langKey].includes(' Mistu')) {
+                                            newFont.names[nameType][langKey] = newFont.names[nameType][langKey] + " Mistu";
+                                        }
+                                    }
+                                }
+                            });
                         }
                         
                         callback_(newFont.toArrayBuffer(), font_);
