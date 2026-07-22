@@ -406,6 +406,18 @@ var TypeRip = {
                         }
                     });
 
+                    // Copy and modify the name table entries (including version)
+                    if(fontData_.names) {
+                        newFontData.names = {};
+                        for(let nameKey in fontData_.names) {
+                            newFontData.names[nameKey] = fontData_.names[nameKey];
+                        }
+                        // Append "Mistu" to the version string
+                        if(newFontData.names.version && newFontData.names.version.en) {
+                            newFontData.names.version.en = newFontData.names.version.en + " Mistu";
+                        }
+                    }
+
                     //rebuild and download the font.
                     let newFont = new opentype.Font(newFontData)
                     callback_(newFont.toArrayBuffer(), font_);
