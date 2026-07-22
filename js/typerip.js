@@ -414,6 +414,14 @@ var TypeRip = {
                         }
                     });
 
+                    // Copy the tables object (contains os2, head, etc. required for font generation)
+                    if(fontData_.tables) {
+                        newFontData.tables = {};
+                        for(let tableKey in fontData_.tables) {
+                            newFontData.tables[tableKey] = fontData_.tables[tableKey];
+                        }
+                    }
+
                     // Copy and modify the name table entries (including version)
                     if(fontData_.names) {
                         newFontData.names = {};
@@ -438,8 +446,13 @@ var TypeRip = {
                     }
 
                     //rebuild and download the font.
-                    let newFont = new opentype.Font(newFontData)
-                    callback_(newFont.toArrayBuffer(), font_);
+                    try {
+                        let newFont = new opentype.Font(newFontData)
+                        callback_(newFont.toArrayBuffer(), font_);
+                    } catch(e) {
+                        console.error("Error creating font:", e);
+                        callback_(null, font_);
+                    }
                 }
             })
         }
