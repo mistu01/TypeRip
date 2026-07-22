@@ -313,14 +313,22 @@ var TypeRip = {
         const zip = new JSZip();
         const zipName = (zipFileName_ || "TypeRip Fonts") + ".zip";
         let fontProcessCounter = 0;
+        let successCount = 0;
 
         fontList.forEach(fontData => {
             this.getAndRepairFont(fontData, rawDownload_, (fontBuffer, fontMeta) => {
                 if (fontBuffer) {
                     zip.file(this.getFontFileName(fontMeta), fontBuffer);
+                    successCount++;
+                } else {
+                    console.warn("Failed to process font:", fontMeta?.name || fontMeta?.familyName);
                 }
                 fontProcessCounter++;
                 if(fontProcessCounter === fontList.length){
+                    if(successCount === 0) {
+                        alert("No fonts could be processed. Check console for errors.");
+                        return;
+                    }
                     zip.generateAsync({type:"blob"})
                     .then(function(content) {
                         saveAs(content, zipName);
@@ -348,6 +356,9 @@ var TypeRip = {
         if(rawDownload_){
             axios.get(font_.url, {responseType: 'arraybuffer'}).then(function (response) {
                 callback_(response.data, font_);
+            }).catch(function(error) {
+                console.error("Error downloading font:", error);
+                callback_(null, font_);
             });
 
         }else{
@@ -357,6 +368,13 @@ var TypeRip = {
                     callback_(null, font_);
                     return;
                 }else{
+
+                    // Check if fontData_ is valid
+                    if (!fontData_ || !fontData_.glyphs || !fontData_.glyphs.glyphs) {
+                        console.error("Invalid font data structure");
+                        callback_(null, font_);
+                        return;
+                    }
 
                     //Rebuild the glyph data structure. This repairs any encoding issues.
                     let rebuiltGlyphs = []
@@ -415,10 +433,14 @@ var TypeRip = {
                     });
 
                     // Copy the tables object (contains os2, head, etc. required for font generation)
+                    // For variable fonts, we need to preserve fvar, avar, and other variation tables
                     if(fontData_.tables) {
                         newFontData.tables = {};
                         for(let tableKey in fontData_.tables) {
-                            newFontData.tables[tableKey] = fontData_.tables[tableKey];
+                            // Skip name table as we'll generate our own
+                            if(tableKey !== 'name') {
+                                newFontData.tables[tableKey] = fontData_.tables[tableKey];
+                            }
                         }
                     }
 
